@@ -133,9 +133,8 @@ contract DAO is AccessControl, ReentrancyGuard {
     /// @notice Function for finishing the proposal
     /// @param proposalId Proposal id to finish
     /** @dev
-    Function does not allow to vote for non-existing proposal.
+    Function does not allow to finish non-existing proposal.
     Function does not allow to finish proposal during debating period.
-    Function does not allow to vote twice.
     Function emits ProposalFinished event.
     */
     function finishProposal(uint256 proposalId) external nonReentrant {
