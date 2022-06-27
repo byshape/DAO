@@ -172,6 +172,13 @@ describe("DAO", function () {
     expect(await rewardToken.balanceOf(admin2.address)).to.be.equal(adminReward);
   });
 
+  it("Does not finish proposal twice", async() => {
+    let admin2Balance = await rewardToken.balanceOf(admin2.address);
+    await expect(dao.finishProposal(proposalsCounter))
+    .to.be.revertedWith(`InvalidProposal(${proposalsCounter})`);
+    expect(await rewardToken.balanceOf(admin2.address)).to.be.equal(admin2Balance);
+  });
+
   it("Does not finish proposal with invalid call data", async() => {
     let callData: string = user.address.toString().toLowerCase();
     proposalsCounter++;

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 /// @notice This contract can be used for only the most basic DAO test experiments
 contract DAO is AccessControl, ReentrancyGuard {
     using Counters for Counters.Counter;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
 
     struct Deposit {
         uint256 amount;
@@ -27,6 +27,7 @@ contract DAO is AccessControl, ReentrancyGuard {
         uint256 votedFor;
         uint256 votedAgainst;
         mapping(address => bool) voted;
+        bool finished;
     }
 
     /// @dev Emits when the new proposal was added
@@ -50,7 +51,7 @@ contract DAO is AccessControl, ReentrancyGuard {
     bytes32 public constant CHAIRPERSON_ROLE = keccak256("CHAIRPERSON_ROLE");
 
     // holders of this ERC20 token can vote for proposals
-    IERC20 internal _voteToken;
+    IERC20Metadata internal _voteToken;
     // minimum percent of votes, 18 digits
     uint256 internal _minimumQuorum;
     // amount in seconds
@@ -64,7 +65,7 @@ contract DAO is AccessControl, ReentrancyGuard {
 
     constructor(
         address chairPerson,
-        IERC20 voteToken,
+        IERC20Metadata voteToken,
         uint256 minimumQuorum,
         uint256 debatingDuration
     ) {
@@ -139,14 +140,16 @@ contract DAO is AccessControl, ReentrancyGuard {
     */
     function finishProposal(uint256 proposalId) external nonReentrant {
         Proposal storage proposal = _proposals[proposalId];
-        // check if proposal with proposalId exists
+        // check if proposal with proposalId exists and it wasn't finished yet
         // solhint-disable not-rely-on-time
-        if(proposal.startTimestamp == 0) revert InvalidProposal(proposalId);
+        if(proposal.startTimestamp == 0 || proposal.finished == true) revert InvalidProposal(proposalId);
         // check if debating period is over
         if(block.timestamp < proposal.startTimestamp + _debatingDuration) revert WrongPeriod();
+        // get token's decimals to remove extra zeros used for computation accuracy
+        uint256 divider = 10 ** _voteToken.decimals();
         // check if quorum was reached
         // solhint-enable not-rely-on-time
-        if(proposal.votedFor + proposal.votedAgainst > (_voteToken.totalSupply() * _minimumQuorum / 1e18)) {
+        if(proposal.votedFor + proposal.votedAgainst > (_voteToken.totalSupply() * _minimumQuorum / divider)) {
             // check if majority voted for the proposal
             if(proposal.votedFor > proposal.votedAgainst) {
                 // call calldata on recipient
@@ -156,6 +159,7 @@ contract DAO is AccessControl, ReentrancyGuard {
                 if(success == false) revert FunctionCallError(proposal.recipient, proposal.callData);
             }
         }
+        proposal.finished = true;
         emit ProposalFinished(proposalId);
         
         

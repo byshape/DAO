@@ -3,7 +3,7 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-/// @title ERC20 contract implemented by EIP-20 Token Standart
+/// @title ERC20 contract implemented by EIP-20 Token Standard
 /// @author Xenia Shape
 /// @notice This contract can be used for only the most basic ERC20 test experiments
 contract ERC20 is AccessControl {
@@ -64,7 +64,7 @@ contract ERC20 is AccessControl {
             require(currentAllowance >= value, "Insufficient allowance");
             _approve(from, msg.sender, currentAllowance - value);
         }
-        
+
         _transfer(from, to, value);
         return true;
     }
