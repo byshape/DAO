@@ -16,14 +16,45 @@ describe("DAO", function () {
   let admin2: SignerWithAddress;
   let user: SignerWithAddress;
   let user2: SignerWithAddress;
+  let user3: SignerWithAddress;
   let voteToken: Contract;
   let rewardToken: Contract;
   let dao: Contract;
   let proposalsCounter: number = 0;
 
-  function getCallData(): string {
-    var jsonAbi = [{
+  function getCallData(name: string, args: Array<any>): string {
+    var jsonAbi = [
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          }
+        ],
+        "name": "transfer",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
       "inputs": [
+        {
+          "internalType": "address",
+          "name": "from",
+          "type": "address"
+        },
         {
           "internalType": "address",
           "name": "to",
@@ -35,7 +66,7 @@ describe("DAO", function () {
           "type": "uint256"
         }
       ],
-      "name": "transfer",
+      "name": "transferFrom",
       "outputs": [
         {
           "internalType": "bool",
@@ -45,10 +76,11 @@ describe("DAO", function () {
       ],
       "stateMutability": "nonpayable",
       "type": "function"
-    }];
+    }
+  ];
 
     const iface = new ethers.utils.Interface(jsonAbi);
-    return iface.encodeFunctionData("transfer", [admin2.address, adminReward]);
+    return iface.encodeFunctionData(name, args);
   }
 
   const setupTest = deployments.createFixture(
@@ -69,9 +101,8 @@ describe("DAO", function () {
 
   before(async () => {
     deployer = await ethers.getNamedSigner("deployer");
-    [admin2, user, user2] = await ethers.getUnnamedSigners();
+    [admin2, user, user2, user3] = await ethers.getUnnamedSigners();
     
-    // await deployments.fixture(["VoteToken", "RewardToken", "DAO"]);
     const setup = await setupTest();
     voteToken = setup.voteToken;
     rewardToken = setup.rewardToken;
@@ -89,7 +120,7 @@ describe("DAO", function () {
   });
 
   it("Adds proposal", async () => {
-    let callData: string = getCallData();
+    let callData: string = getCallData("transfer", [admin2.address, adminReward]);
 
     expect(await dao.addProposal(
       callData, rewardToken.address, "Reward admin2 with 10 tokens"
@@ -180,7 +211,7 @@ describe("DAO", function () {
   });
 
   it("Does not finish proposal with invalid call data", async() => {
-    let callData: string = user.address.toString().toLowerCase();
+    let callData: string = getCallData("transferFrom", [user3.address, deployer.address, userMint]);
     proposalsCounter++;
     expect(await dao.addProposal(
       callData, rewardToken.address, "Call invalid calldata"
@@ -196,11 +227,11 @@ describe("DAO", function () {
 
     await ethers.provider.send('evm_increaseTime', [debatingDuration * 2]);
     await expect(dao.finishProposal(proposalsCounter))
-    .to.be.revertedWith(`FunctionCallError("${rewardToken.address}", "${callData}")`);
+    .to.be.revertedWith(`FunctionCallError()`);
   });
 
   it("Finishes proposal without quorum and without calling call data on recipient", async() => {
-    let callData: string = getCallData();
+    let callData: string = getCallData("transfer", [admin2.address, adminReward]);
     proposalsCounter++;
     expect(await dao.addProposal(
       callData, rewardToken.address, "Reward admin2 with 10 tokens"
@@ -230,7 +261,7 @@ describe("DAO", function () {
       user2.address, initialSupply
     );
     
-    let callData: string = getCallData();
+    let callData: string = getCallData("transfer", [admin2.address, adminReward]);
     proposalsCounter++;
     expect(await dao.addProposal(
       callData, rewardToken.address, "Reward admin2 with 10 tokens"

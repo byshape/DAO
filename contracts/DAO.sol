@@ -44,7 +44,7 @@ contract DAO is AccessControl, ReentrancyGuard {
     error WrongPeriod();
     error InvalidProposal(uint256 proposalId);
     error VotedAlready(address account, uint256 proposalId);
-    error FunctionCallError(address recipient, bytes callData);
+    error FunctionCallError();
     error InvalidAmount(uint256 amount);
 
     // this role can add new proposals
@@ -156,7 +156,7 @@ contract DAO is AccessControl, ReentrancyGuard {
                 // solhint-disable-next-line avoid-low-level-calls
                 (bool success, ) = proposal.recipient.call{value: 0}(proposal.callData);
                 // raise error if call failed
-                if(success == false) revert FunctionCallError(proposal.recipient, proposal.callData);
+                if(success == false) revert FunctionCallError();
             }
         }
         proposal.finished = true;
